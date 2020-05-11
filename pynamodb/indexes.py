@@ -1,18 +1,20 @@
 """
 PynamoDB Indexes
 """
+from inspect import getmembers
+
+from pynamodb._compat import FakeGenericMeta
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, ATTR_TYPE_MAP, KEY_SCHEMA,
     ATTR_DEFINITIONS, META_CLASS_NAME
 )
 from pynamodb.attributes import Attribute
 from pynamodb.types import HASH, RANGE
-from pynamodb.compat import getmembers_issubclass
 from pynamodb.connection.util import pythonic
 from six import with_metaclass
 
 
-class IndexMeta(type):
+class IndexMeta(FakeGenericMeta):
     """
     Index meta class
 
@@ -26,7 +28,7 @@ class IndexMeta(type):
                     meta_cls = attrs.get(META_CLASS_NAME)
                     if meta_cls is not None:
                         meta_cls.attributes = None
-                elif issubclass(attr_obj.__class__, (Attribute, )):
+                elif isinstance(attr_obj, Attribute):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
@@ -49,7 +51,8 @@ class Index(with_metaclass(IndexMeta)):
               range_key_condition=None,
               filter_condition=None,
               consistent_read=False,
-              **filters):
+              limit=None,
+              rate_limit=None):
         """
         Count on an index
         """
@@ -59,7 +62,8 @@ class Index(with_metaclass(IndexMeta)):
             filter_condition=filter_condition,
             index_name=cls.Meta.index_name,
             consistent_read=consistent_read,
-            **filters
+            limit=limit,
+            rate_limit=rate_limit,
         )
 
     @classmethod
@@ -67,12 +71,13 @@ class Index(with_metaclass(IndexMeta)):
               hash_key,
               range_key_condition=None,
               filter_condition=None,
-              scan_index_forward=None,
               consistent_read=False,
+              scan_index_forward=None,
               limit=None,
               last_evaluated_key=None,
               attributes_to_get=None,
-              **filters):
+              page_size=None,
+              rate_limit=None):
         """
         Queries an index
         """
@@ -80,13 +85,14 @@ class Index(with_metaclass(IndexMeta)):
             hash_key,
             range_key_condition=range_key_condition,
             filter_condition=filter_condition,
+            consistent_read=consistent_read,
             index_name=self.Meta.index_name,
             scan_index_forward=scan_index_forward,
-            consistent_read=consistent_read,
             limit=limit,
             last_evaluated_key=last_evaluated_key,
             attributes_to_get=attributes_to_get,
-            **filters
+            page_size=page_size,
+            rate_limit=rate_limit,
         )
 
     @classmethod
@@ -95,11 +101,11 @@ class Index(with_metaclass(IndexMeta)):
              segment=None,
              total_segments=None,
              limit=None,
-             conditional_operator=None,
              last_evaluated_key=None,
              page_size=None,
              consistent_read=None,
-             **filters):
+             rate_limit=None,
+             attributes_to_get=None):
         """
         Scans an index
         """
@@ -108,12 +114,12 @@ class Index(with_metaclass(IndexMeta)):
             segment=segment,
             total_segments=total_segments,
             limit=limit,
-            conditional_operator=conditional_operator,
             last_evaluated_key=last_evaluated_key,
             page_size=page_size,
             consistent_read=consistent_read,
             index_name=self.Meta.index_name,
-            **filters
+            rate_limit=rate_limit,
+            attributes_to_get=attributes_to_get,
         )
 
     @classmethod
@@ -159,7 +165,7 @@ class Index(with_metaclass(IndexMeta)):
         """
         if cls.Meta.attributes is None:
             cls.Meta.attributes = {}
-            for name, attribute in getmembers_issubclass(cls, Attribute):
+            for name, attribute in getmembers(cls, lambda o: isinstance(o, Attribute)):
                 cls.Meta.attributes[name] = attribute
         return cls.Meta.attributes
 

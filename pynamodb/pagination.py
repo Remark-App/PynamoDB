@@ -120,7 +120,7 @@ class PageIterator(object):
             return self._last_evaluated_key.keys()
 
         # Use the table meta data to determine the key attributes
-        table_meta = six.get_method_self(self._operation).get_meta_table()
+        table_meta = six.get_method_self(self._operation).get_meta_table()  # type: ignore  # method_self cannot be None
         return table_meta.get_key_names(self._kwargs.get('index_name'))
 
     @property
@@ -198,7 +198,7 @@ class ResultIterator(object):
         # The operation should be resumed starting at the last item returned, not the last item evaluated.
         # This can occur if the 'limit' is reached in the middle of a page.
         item = self._items[self._index - 1]
-        return dict((key, item[key]) for key in self.page_iter.key_names)
+        return {key: item[key] for key in self.page_iter.key_names}
 
     @property
     def total_count(self):
